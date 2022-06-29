@@ -28,6 +28,34 @@ export const getNumberOfHeroes = functions.https.onCall(
   }
 );
 
+export const initializeNewInfluencer = functions.https.onCall(
+  async (data, context) => {
+    try {
+      let theUid = context.auth.uid;
+      let theEmail = context.auth.token.email;
+      console.log(`the UID is:`, theUid);
+
+      console.log(`the data is:`, data);
+      let theStartTime = data.startTime;
+      let theMeetingLength = data.meetingLength;
+      let theNumMeetings = data.numMeetings;
+
+      for (let i = 0; i < theNumMeetings; i++) {
+        let meetingCollRef = firestore.collection('meetings');
+        let docSnap = await meetingCollRef.add({
+          uid: theUid,
+          email: theEmail,
+          startTime: theStartTime + i * theMeetingLength / 60,
+        });
+        console.log(`the new doc ID is:`, docSnap.id);
+      }
+    } catch (ex) {
+      functions.logger.info(`ERROR: ${ex.message}`);
+      throw ex;
+    }
+  }
+);
+
 export const fsHeroesOnCreate = functions.firestore
   .document('heroes/{docId}')
   .onCreate(async (docSnap, context) => {
@@ -35,7 +63,9 @@ export const fsHeroesOnCreate = functions.firestore
       const newHero = docSnap.data();
       functions.logger.log(`new hero! ${newHero.name}`);
       const aggDocRef = firestore.doc('stats/heroes');
-      return aggDocRef.update({ count: admin.firestore.FieldValue.increment(1) });
+      return aggDocRef.update({
+        count: admin.firestore.FieldValue.increment(1),
+      });
     } catch (ex) {
       functions.logger.info(`ERROR: ${ex.message}`);
       throw ex;
